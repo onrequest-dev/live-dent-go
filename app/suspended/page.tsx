@@ -1,5 +1,5 @@
 // app/suspended/page.tsx
-import Link from 'next/link';
+import Link from "next/link";
 
 export default function SuspendedAccount() {
   return (
@@ -48,98 +48,108 @@ export default function SuspendedAccount() {
             </g>
 
             {/* ✅ علامة استفهام بدل X */}
-{/* ✅ علامة استفهام - مدورة 180 درجة (مقلوبة) */}
-<g transform="translate(1420, 4350) rotate(180)">
-  {/* خلفية دائرية برتقالية */}
-  <circle cx="0" cy="0" r="400" fill="#f59e0b" />
+            {/* ✅ علامة استفهام - مدورة 180 درجة (مقلوبة) */}
+            <g transform="translate(1420, 4350) rotate(180)">
+              {/* خلفية دائرية برتقالية */}
+              <circle cx="0" cy="0" r="400" fill="#f59e0b" />
 
-  {/* علامة الاستفهام */}
-  <g fill="none" stroke="white" strokeWidth="90" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M -130 -180 Q -130 -320, 0 -320 Q 130 -320, 130 -180 Q 130 -60, 0 30" />
-    <circle cx="0" cy="180" r="45" fill="white" stroke="none" />
-  </g>
-</g>
+              {/* علامة الاستفهام */}
+              <g
+                fill="none"
+                stroke="white"
+                strokeWidth="90"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M -130 -180 Q -130 -320, 0 -320 Q 130 -320, 130 -180 Q 130 -60, 0 30" />
+                <circle cx="0" cy="180" r="45" fill="white" stroke="none" />
+              </g>
+            </g>
           </g>
         </svg>
       </div>
 
       {/* العنوان الرئيسي */}
-      <h1 className="text-3xl font-bold text-blue-900 mb-3 text-center">
+      <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-3 text-center">
         حسابك موقوف مؤقتاً
       </h1>
 
-      {/* السبب */}
-      <h2 className="text-lg font-semibold text-amber-700 mb-5 text-center">
-        نأسف لإبلاغك بأن حسابك متوقف عن العمل
-      </h2>
-
-      {/* التفاصيل */}
-      <div className="max-w-md w-full bg-white/70 backdrop-blur-sm border border-gray-100 rounded-2xl p-5 mb-6 shadow-sm" dir='rtl'>
-        <p className="text-sm text-gray-700 leading-relaxed text-center" dir='rtl'>
-          قد يكون السبب:
-        </p>
-        <ul className="text-sm text-gray-600 leading-relaxed mt-2 space-y-1.5 text-right">
-          <li className="flex items-start gap-2">
-            <span className="text-amber-500 mt-0.5">•</span>
-            <span>عدم استخدام الحساب لفترة طويلة</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-amber-500 mt-0.5">•</span>
-            <span>انتهاء صلاحية الاشتراك</span>
-          </li>
-        </ul>
-      </div>
-
-      {/* رسالة الإعتذار */}
-      <p className="text-sm text-gray-600 mb-8 text-center max-w-md leading-relaxed">
-        نعتذر عن أي إزعاج، يرجى التواصل مع خدمة العملاء لإعادة تفعيل حسابك
+      {/* رسالة مختصرة */}
+      <p className="text-base text-slate-600 mb-6 text-center max-w-md leading-relaxed">
+        نعتذر عن أي إزعاج؛ بإمكانك التواصل معنا لإعادة تفعيل حسابك بسهولة
       </p>
 
-      {/* ============ الأزرار ============ */}
-<div className="flex flex-col sm:flex-row items-center gap-3">
-  {/* زر خدمة العملاء */}
-  <a
-    href="https://wa.me/963982719525"
-    target="_blank"
-    rel="noopener noreferrer"
-    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-emerald-500 text-emerald-700 hover:bg-emerald-50 transition-all duration-300 font-medium text-sm"
-  >
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-    >
-      <path d="M19.077 4.928C17.191 3.041 14.683 2 12.006 2 6.498 2 2.017 6.477 2.012 11.984c-.001 1.76.46 3.478 1.335 4.992L2 21.991l5.172-1.356c1.46.796 3.104 1.215 4.828 1.216h.004c5.508 0 9.99-4.478 9.995-9.984.002-2.667-1.035-5.175-2.922-7.064zm-7.071 15.355h-.003c-1.507 0-2.985-.405-4.273-1.169l-.306-.181-3.069.805.819-2.991-.202-.32a8.268 8.268 0 0 1-1.267-4.439c.003-4.572 3.724-8.29 8.301-8.29 2.216.001 4.299.865 5.866 2.432a8.238 8.238 0 0 1 2.428 5.873c-.003 4.572-3.724 8.29-8.297 8.29zm4.551-6.208c-.25-.125-1.476-.728-1.705-.812-.229-.083-.396-.124-.562.125-.167.25-.647.812-.793.978-.146.167-.292.187-.542.062-.25-.124-1.054-.389-2.008-1.24-.742-.662-1.243-1.48-1.389-1.729-.146-.25-.015-.385.11-.509.112-.112.25-.292.375-.438.125-.146.167-.25.25-.417.083-.167.042-.313-.021-.438-.062-.125-.562-1.355-.771-1.855-.203-.486-.409-.42-.562-.427-.144-.007-.308-.009-.473-.009-.166 0-.437.063-.666.313-.229.25-.874.854-.874 2.083s.895 2.416 1.02 2.583c.125.166 1.761 2.688 4.267 3.77.596.257 1.062.411 1.425.526.599.19 1.144.163 1.575.099.48-.072 1.476-.604 1.684-1.187.208-.583.208-1.083.146-1.187-.062-.104-.229-.167-.479-.292z" />
-    </svg>
-    <span>تواصل مع خدمة العملاء</span>
-  </a>
+      {/* طمأنة حفظ البيانات */}
+      <div
+        className="flex items-start gap-3 max-w-md w-full mb-8 rounded-2xl border border-teal-100 bg-teal-50/80 px-5 py-4"
+        dir="rtl"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="shrink-0 mt-0.5 text-teal-600"
+          aria-hidden="true"
+        >
+          <path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3z" />
+          <path d="m9 12 2 2 4-4" />
+        </svg>
+        <p className="text-sm text-teal-900 leading-relaxed font-medium">
+          بياناتك موجودة ومحفوظة، ويمكن استرجاع حسابك وبياناتك عند إعادة التفعيل
+        </p>
+      </div>
 
-  {/* ✅ زر إنشاء حساب جديد */}
-  <Link
-    href="/log-in"
-    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-teal-500 text-teal-700 hover:bg-teal-50 transition-all duration-300 font-medium text-sm"
-  >
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-      <circle cx="8.5" cy="7" r="4" />
-      <line x1="20" y1="8" x2="20" y2="14" />
-      <line x1="23" y1="11" x2="17" y2="11" />
-    </svg>
-    <span>سجل الدخول من حساب آخر</span>
-  </Link>
-</div>
+      {/* ============ الأزرار ============ */}
+      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full max-w-md">
+        {/* زر ثانوي: تسجيل الدخول بحساب آخر */}
+        <Link
+          href="/log-in"
+          className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border border-teal-600 text-teal-700 bg-white hover:bg-teal-50 transition-all duration-300 font-semibold text-sm sm:flex-1"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="8.5" cy="7" r="4" />
+            <line x1="20" y1="8" x2="20" y2="14" />
+            <line x1="23" y1="11" x2="17" y2="11" />
+          </svg>
+          <span>تسجيل الدخول بحساب آخر</span>
+        </Link>
+
+        {/* زر رئيسي: خدمة العملاء */}
+        <a
+          href="https://wa.me/963982719525"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-teal-600 text-white shadow-md shadow-teal-600/20 hover:bg-teal-700 transition-all duration-300 font-semibold text-sm sm:flex-1"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
+            <path d="M19.077 4.928C17.191 3.041 14.683 2 12.006 2 6.498 2 2.017 6.477 2.012 11.984c-.001 1.76.46 3.478 1.335 4.992L2 21.991l5.172-1.356c1.46.796 3.104 1.215 4.828 1.216h.004c5.508 0 9.99-4.478 9.995-9.984.002-2.667-1.035-5.175-2.922-7.064zm-7.071 15.355h-.003c-1.507 0-2.985-.405-4.273-1.169l-.306-.181-3.069.805.819-2.991-.202-.32a8.268 8.268 0 0 1-1.267-4.439c.003-4.572 3.724-8.29 8.301-8.29 2.216.001 4.299.865 5.866 2.432a8.238 8.238 0 0 1 2.428 5.873c-.003 4.572-3.724 8.29-8.297 8.29zm4.551-6.208c-.25-.125-1.476-.728-1.705-.812-.229-.083-.396-.124-.562.125-.167.25-.647.812-.793.978-.146.167-.292.187-.542.062-.25-.124-1.054-.389-2.008-1.24-.742-.662-1.243-1.48-1.389-1.729-.146-.25-.015-.385.11-.509.112-.112.25-.292.375-.438.125-.146.167-.25.25-.417.083-.167.042-.313-.021-.438-.062-.125-.562-1.355-.771-1.855-.203-.486-.409-.42-.562-.427-.144-.007-.308-.009-.473-.009-.166 0-.437.063-.666.313-.229.25-.874.854-.874 2.083s.895 2.416 1.02 2.583c.125.166 1.761 2.688 4.267 3.77.596.257 1.062.411 1.425.526.599.19 1.144.163 1.575.099.48-.072 1.476-.604 1.684-1.187.208-.583.208-1.083.146-1.187-.062-.104-.229-.167-.479-.292z" />
+          </svg>
+          <span>تواصل مع خدمة العملاء</span>
+        </a>
+      </div>
     </div>
   );
 }
