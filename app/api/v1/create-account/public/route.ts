@@ -91,6 +91,7 @@ export async function POST(request: NextRequest) {
       currency,
       subscriptionStatus: "active",
       settings: DEFAULT_SETTINGS,
+      appMode:"offline"
     };
 
     const { data: clinicData, error: clinicError } = await supabase_server
