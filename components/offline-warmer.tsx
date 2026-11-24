@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-/** تابات الـ dashboard لكل عيادة — تتطلب clinicId */
+/** تابات الـ dashboard لكل مفتاح — تتطلب مفتاح (clinicId أو live-dent-go) */
 const DASHBOARD_TABS = [
   null,
   "main",
@@ -16,15 +16,27 @@ const DASHBOARD_TABS = [
   "cv",
 ] as const;
 
-/** صفحات مستقلة تحت /dashboard لا تعتمد على clinicId */
-const EXTRA_PAGES = ["/dashboard/live-dent-go"] as const;
-
 const REQUEST_GAP_MS = 300;
 const REWARM_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const SW_TIMEOUT_MS = 3000;
 
-const buildTabUrl = (clinicId: string, tab: string | null) =>
-  tab ? `/dashboard/${clinicId}?tab=${tab}` : `/dashboard/${clinicId}`;
+/**
+ * بناء URL للتاب — نسختان لكل تاب:
+ *  - النسخة الأساسية: ?tab=xxx
+ *  - النسخة البديلة: ?tab=xxx&source=offline  (أو أي بارامتر يميّز النسخة)
+ *
+ * ملاحظة: إذا كان التاب null (الصفحة الرئيسية) نستخدم مسارين مختلفين.
+ */
+const buildTabUrls = (key: string, tab: string | null): string[] => {
+  const base = tab ? `/dashboard/${key}?tab=${tab}` : `/dashboard/${key}`;
+
+  // النسخة الثانية: نضيف بارامتر لتمييزها في الـ cache
+  const alt = tab
+    ? `/dashboard/${key}?tab=${tab}&variant=offline`
+    : `/dashboard/${key}?variant=offline`;
+
+  return [base, alt];
+};
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -94,35 +106,37 @@ export function OfflineWarmer() {
 
       if (cancelled) return;
 
-      // 🔑 2) بناء قائمة كل الـ URLs المطلوب تسخينها
+      // 🔑 2) بناء قائمة المفاتيح (clinicId + live-dent-go)
       const clinicId = localStorage.getItem("currentClinicId");
+      const keys: string[] = [];
+
+      if (clinicId) keys.push(clinicId);
+      // live-dent-go يُعتبر مفتاحاً أيضاً
+      keys.push("live-dent-go");
+
+      if (keys.length === 0) return;
+
+      // 🔑 3) بناء كل الـ URLs — نسختان لكل تاب لكل مفتاح
       const urls: string[] = [];
-
-      // تابات الـ dashboard (تحتاج clinicId)
-      if (clinicId) {
+      for (const key of keys) {
         for (const tab of DASHBOARD_TABS) {
-          urls.push(buildTabUrl(clinicId, tab));
+          urls.push(...buildTabUrls(key, tab));
         }
-      }
-
-      // صفحات مستقلة لا تعتمد على clinicId
-      for (const page of EXTRA_PAGES) {
-        urls.push(page);
       }
 
       if (urls.length === 0) return;
 
-      // 🔑 3) تحقق من آخر تسخين
-      const key = `offline:warmed:${clinicId ?? "global"}`;
-      const last = Number(localStorage.getItem(key) ?? 0);
+      // 🔑 4) تحقق من آخر تسخين (مفتاح مركّب لكل المفاتيح)
+      const storageKey = `offline:warmed:${keys.join("+")}`;
+      const last = Number(localStorage.getItem(storageKey) ?? 0);
       if (Date.now() - last < REWARM_INTERVAL_MS) return;
 
-      // 🔑 4) تخزين دائم
+      // 🔑 5) تخزين دائم
       try {
         await navigator.storage?.persist?.();
       } catch {}
 
-      // 🔑 5) ابدأ التسخين
+      // 🔑 6) ابدأ التسخين
       setVisible(true);
       setProgress(0);
 
@@ -148,7 +162,7 @@ export function OfflineWarmer() {
       }
 
       if (!cancelled) {
-        localStorage.setItem(key, String(Date.now()));
+        localStorage.setItem(storageKey, String(Date.now()));
         sessionStorage.removeItem("offline-warmer:reloaded");
 
         setProgress(100);
