@@ -43,6 +43,7 @@ import {
   XCircle,
   UserX,
   Sparkles,
+  ChevronLeft,
 } from "lucide-react";
 
 import {
@@ -1262,225 +1263,113 @@ export function MainTab({
                     })}
                   </AnimatePresence>
                   {patientsWithDetails.length === 0 && (
-                    <div className="text-center py-10 sm:py-14 px-4">
-                      {/* أيقونة مع خلفية دائرية ناعمة */}
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                    <div className="flex flex-col items-center justify-center py-16 px-4 text-center animate-in fade-in duration-500">
+                      {/* 1. أيقونة الحالة الفارغة: بسيطة جداً وهادئة */}
+                      <div className="w-14 h-14 mx-auto mb-6 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center">
                         <Users
-                          size={28}
-                          className="sm:w-8 sm:h-8 text-gray-300"
+                          size={24}
+                          className="text-slate-400"
+                          strokeWidth={1.5}
                         />
                       </div>
 
-                      {/* العنوان */}
-                      <p className="text-gray-800 font-semibold mb-1.5 text-sm sm:text-base">
-                        لا يوجد مرضى
-                      </p>
-
-                      {/* الوصف */}
-                      <p className="text-gray-400 text-xs sm:text-sm mb-5">
+                      <h3 className="text-lg font-bold text-slate-800 mb-2">
                         {showTodayOnly
-                          ? "لا توجد مواعيد لهذا اليوم"
-                          : "لا يوجد أي مرضى في القائمة بعد"}
+                          ? "لا توجد مواعيد اليوم"
+                          : "قائمة المرضى فارغة"}
+                      </h3>
+                      <p className="text-slate-500 text-sm max-w-xs mx-auto mb-8 leading-relaxed">
+                        {showTodayOnly
+                          ? "جدولك خالي حالياً. يمكنك إضافة موعد جديد أو مراجعة السجل."
+                          : "ابدأ بإضافة المريض الأول لبناء قاعدة بيانات العيادة."}
                       </p>
 
-                      {/* ============================================================ */}
-                      {/* بطاقات المقترحات — مرتبة وأنيقة                              */}
-                      {/* ============================================================ */}
-                      <div className="inline-flex flex-col gap-2 w-full max-w-md text-right">
-                        {/* ⭐ 1) الإجراء الأساسي: إضافة مريض جديد */}
+                      <div className="w-full max-w-sm space-y-4">
+                        {/* ⭐ 2. الإجراء الأساسي: تصميم كبسولة (Pill) نظيف */}
                         <button
                           data-tutorial="add-patient"
                           onClick={() => {
                             setShowNewPatientModal(true);
-                            if (tutorialStep === 2) goToStep(3); // ← السطر الجديد فقط
+                            if (tutorialStep === 2) goToStep(3);
                           }}
-                          className="flex items-center gap-3 px-4 py-3 sm:py-3.5 rounded-2xl transition-all duration-200 group hover:shadow-md active:scale-[0.98]"
-                          style={{
-                            background: `linear-gradient(135deg, ${primaryColor}12, ${primaryColor}06)`,
-                            border: `1.5px solid ${primaryColor}30`,
-                          }}
+                          className="w-fit mx-auto inline-flex items-center gap-3 px-5 py-3.5 rounded-full bg-white border border-slate-200 shadow-sm hover:border-sky-300 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group"
                         >
+                          <span className="font-semibold text-slate-700 group-hover:text-slate-900">
+                            {showTodayOnly
+                              ? "إضافة مريض جديد"
+                              : "إضافة أول مريض"}
+                          </span>
+
+                          {/* أيقونة صغيرة وبسيطة للإشارة للتفاعل */}
                           <div
-                            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm"
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-white shrink-0"
                             style={{ backgroundColor: primaryColor }}
                           >
-                            <Plus
-                              size={16}
-                              className="sm:w-[18px] sm:h-[18px] text-white"
-                              strokeWidth={2.5}
-                            />
+                            <Plus size={14} strokeWidth={3} />
                           </div>
-
-                          <div className="text-right flex-1 min-w-0">
-                            <p
-                              className="text-xs sm:text-sm font-bold"
-                              style={{ color: primaryColor }}
-                            >
-                              {showTodayOnly
-                                ? "إضافة مريض جديد"
-                                : "إضافة أول مريض"}
-                            </p>
-                            <p
-                              className="text-[10px] sm:text-xs mt-0.5"
-                              style={{ color: `${primaryColor}99` }}
-                            >
-                              {showTodayOnly
-                                ? "تسجيل مريض وإضافة موعد"
-                                : "ابدأ ببناء قاعدة مرضاك"}
-                            </p>
-                          </div>
-
-                          <ChevronRight
-                            size={14}
-                            className="transition-transform duration-200 group-hover:translate-x-[-3px] flex-shrink-0"
-                            style={{ color: primaryColor }}
-                          />
                         </button>
 
-                        {/* 📋 فاصل: ابدأ بتهيئة عيادتك */}
-                        <div className="flex items-center gap-2 px-2 py-1">
-                          <div className="h-px flex-1 bg-gray-100" />
-                          <span className="text-[10px] font-semibold text-gray-400 tracking-wide">
-                            ابدأ بتهيئة عيادتك
-                          </span>
-                          <div className="h-px flex-1 bg-gray-100" />
-                        </div>
-
-                        {/* ⏰ 2) عيّن أوقات عملك */}
-                        <button
-                          onClick={() => {
-                            const params = new URLSearchParams(
-                              searchParams.toString(),
-                            );
-                            params.set("tab", "clinic");
-                            router.push(`${pathname}?${params.toString()}`, {
-                              scroll: false,
-                            });
-                          }}
-                          className="flex items-center gap-3 px-4 py-3 sm:py-3.5 rounded-2xl transition-all duration-200 group hover:bg-white hover:shadow-sm active:scale-[0.98]"
-                          style={{
-                            backgroundColor: "#fafbfc",
-                            border: "1.5px solid #f1f5f9",
-                          }}
-                        >
-                          <div
-                            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-105"
-                            style={{ backgroundColor: "#eef2f7" }}
-                          >
-                            <Clock
-                              size={16}
-                              className="sm:w-[18px] sm:h-[18px] text-gray-600"
-                              strokeWidth={2}
-                            />
-                          </div>
-
-                          <div className="text-right flex-1 min-w-0">
-                            <p className="text-xs sm:text-sm font-semibold text-gray-800">
-                              عيّن أوقات عملك
-                            </p>
-                            <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">
-                              حدّد ساعات الدوام والعطل الأسبوعية
-                            </p>
-                          </div>
-
-                          <ChevronRight
-                            size={14}
-                            className="text-gray-300 group-hover:text-gray-500 group-hover:translate-x-[-3px] transition-all duration-200 flex-shrink-0"
-                          />
-                        </button>
-
-                        {/* 💎 3) عيّن خدمات عيادتك */}
-                        <button
-                          onClick={() => {
-                            const params = new URLSearchParams(
-                              searchParams.toString(),
-                            );
-                            params.set("tab", "treatments");
-                            router.push(`${pathname}?${params.toString()}`, {
-                              scroll: false,
-                            });
-                          }}
-                          className="flex items-center gap-3 px-4 py-3 sm:py-3.5 rounded-2xl transition-all duration-200 group hover:bg-white hover:shadow-sm active:scale-[0.98]"
-                          style={{
-                            backgroundColor: "#fafbfc",
-                            border: "1.5px solid #f1f5f9",
-                          }}
-                        >
-                          <div
-                            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-105"
-                            style={{ backgroundColor: "#eef2f7" }}
-                          >
-                            <Sparkles
-                              size={16}
-                              className="sm:w-[18px] sm:h-[18px] text-gray-600"
-                              strokeWidth={2}
-                            />
-                          </div>
-
-                          <div className="text-right flex-1 min-w-0">
-                            <p className="text-xs sm:text-sm font-semibold text-gray-800">
-                              عيّن خدمات عيادتك
-                            </p>
-                            <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">
-                              أضف العلاجات وأسعارها وقوالبها
-                            </p>
-                          </div>
-
-                          <ChevronRight
-                            size={14}
-                            className="text-gray-300 group-hover:text-gray-500 group-hover:translate-x-[-3px] transition-all duration-200 flex-shrink-0"
-                          />
-                        </button>
-
-                        {/* 👥 4) عرض جميع المرضى (يظهر فقط إذا كان الفلتر مفعّلاً) */}
-                        {showTodayOnly && (
+                        {/* 3. إجراءات التهيئة: كبسولات نصية مدمجة (Chips) */}
+                        {!showTodayOnly && (
                           <>
-                            {/* 📋 فاصل: أو */}
-                            <div className="flex items-center gap-2 px-2 py-1">
-                              <div className="h-px flex-1 bg-gray-100" />
-                              <span className="text-[10px] font-semibold text-gray-400 tracking-wide">
-                                أو
+                            <div className="flex items-center justify-center gap-2 py-2">
+                              <span className="text-xs text-slate-400 font-medium">
+                                تهيئة سريعة:
                               </span>
-                              <div className="h-px flex-1 bg-gray-100" />
                             </div>
 
-                            <button
-                              onClick={() => {
-                                setShowTodayOnly(false);
-                                setSearchQuery("");
-                              }}
-                              className="flex items-center gap-3 px-4 py-3 sm:py-3.5 rounded-2xl transition-all duration-200 group hover:bg-white hover:shadow-sm active:scale-[0.98]"
-                              style={{
-                                backgroundColor: "#fafbfc",
-                                border: "1.5px solid #f1f5f9",
-                              }}
-                            >
-                              <div
-                                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-105"
-                                style={{ backgroundColor: "#eef2f7" }}
+                            <div className="flex flex-wrap justify-center gap-2">
+                              {/* كبسولة ضبط الأوقات */}
+                              <button
+                                onClick={() => {
+                                  const params = new URLSearchParams(
+                                    searchParams.toString(),
+                                  );
+                                  params.set("tab", "clinic");
+                                  router.push(
+                                    `${pathname}?${params.toString()}`,
+                                    { scroll: false },
+                                  );
+                                }}
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-50 border border-slate-200 text-sm text-slate-600 hover:bg-white hover:border-sky-300 hover:text-sky-600 transition-colors"
                               >
-                                <Users
-                                  size={16}
-                                  className="sm:w-[18px] sm:h-[18px] text-gray-600"
-                                  strokeWidth={2}
-                                />
-                              </div>
+                                <Clock size={14} />
+                                <span>ضبط الأوقات</span>
+                              </button>
 
-                              <div className="text-right flex-1 min-w-0">
-                                <p className="text-xs sm:text-sm font-semibold text-gray-800">
-                                  عرض جميع المرضى
-                                </p>
-                                <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">
-                                  تصفح القائمة الكاملة بدون فلترة
-                                </p>
-                              </div>
-
-                              <ChevronRight
-                                size={14}
-                                className="text-gray-300 group-hover:text-gray-500 group-hover:translate-x-[-3px] transition-all duration-200 flex-shrink-0"
-                              />
-                            </button>
+                              {/* كبسولة إضافة الخدمات */}
+                              <button
+                                onClick={() => {
+                                  const params = new URLSearchParams(
+                                    searchParams.toString(),
+                                  );
+                                  params.set("tab", "treatments");
+                                  router.push(
+                                    `${pathname}?${params.toString()}`,
+                                    { scroll: false },
+                                  );
+                                }}
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-50 border border-slate-200 text-sm text-slate-600 hover:bg-white hover:border-sky-300 hover:text-sky-600 transition-colors"
+                              >
+                                <Sparkles size={14} />
+                                <span>إضافة الخدمات</span>
+                              </button>
+                            </div>
                           </>
+                        )}
+
+                        {/* 4. الرابط الثانوي: كبسولة نصية واضحة */}
+                        {showTodayOnly && (
+                          <button
+                            onClick={() => {
+                              setShowTodayOnly(false);
+                              setSearchQuery("");
+                            }}
+                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-sky-50/50 border border-sky-100 text-sm font-medium text-sky-700 hover:bg-sky-100 hover:border-sky-200 transition-colors mx-auto"
+                          >
+                            <span>عرض سجل المرضى الكامل</span>
+                            <ChevronLeft size={16} />
+                          </button>
                         )}
                       </div>
                     </div>
