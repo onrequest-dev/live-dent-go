@@ -6,7 +6,7 @@ import { getMyClinicIdOffline } from "./get-myclinic-id-offline";
 const generateId = () => crypto.randomUUID();
 
 export async function createPatient(
-  credentials: Omit<Patient, 'id' | 'clinicId' | 'createdAt'> & { clinicId: string }
+  credentials: Omit<Patient, 'id' | 'clinicId' | 'createdAt'> 
 ): Promise<{ success: boolean; data?: Patient; error?: string }> {
   try {
     const newPatient: Patient = {

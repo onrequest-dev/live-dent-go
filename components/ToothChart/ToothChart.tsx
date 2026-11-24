@@ -637,7 +637,6 @@ export const ToothChart = forwardRef<ToothChartRef, ToothChartProps>(
           }));
           await saveDentalChart({
             patientId,
-            clinicId,
             teeth: teethForApi, // المفتاح teeth كما يتوقعه الـ API
           });
         } else {

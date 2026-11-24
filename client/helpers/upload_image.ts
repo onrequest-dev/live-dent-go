@@ -208,11 +208,13 @@ export function revokeMediaUrl(mediaId: string) {
 }
 
 export function revokeMediaUrlByUrl(url: string) {
-  for (const [id, u] of urlCache) {
+  let found = false;
+  urlCache.forEach((u, id) => {
+    if (found) return;
     if (u === url) {
       urlCache.delete(id);
       if (u.startsWith('blob:')) URL.revokeObjectURL(u);
-      return;
+      found = true;
     }
-  }
+  });
 }

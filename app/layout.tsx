@@ -1,9 +1,9 @@
-
+import Script from "next/script";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 // import RemoveContextMenu from "@/components/removeContexetMenu";
-import Backgroundjob from "@/components/backgroundjob";
+// import Backgroundjob from "@/components/backgroundjob";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,7 +21,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  
   return (
     <html lang="en">
       <head>
@@ -29,8 +28,23 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         {children}
-        <Backgroundjob />
+        {/* <Backgroundjob /> */}
         {/* <RemoveContextMenu /> */}
+        <Script id="register-sw" strategy="afterInteractive">
+          {`
+            if ('serviceWorker' in navigator) {
+              window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js')
+                  .then(registration => {
+                    console.log('SW registered: ', registration);
+                  })
+                  .catch(registrationError => {
+                    console.log('SW registration failed: ', registrationError);
+                  });
+              });
+            }
+          `}
+        </Script>
       </body>
     </html>
   );
