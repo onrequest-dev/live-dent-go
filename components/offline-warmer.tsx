@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
+/** تابات الـ dashboard */
 const DASHBOARD_TABS = [
   null,
   "main",
@@ -15,14 +16,12 @@ const DASHBOARD_TABS = [
   "cv",
 ] as const;
 
-const REQUEST_GAP_MS = 300;
+// 🔴 زدنا الفاصل الزمني إلى 500ms لمنع خطأ 503 من السيرفر
+const REQUEST_GAP_MS = 500;
 const REWARM_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const SW_TIMEOUT_MS = 3000;
 
-/** المفتاح الأساسي الفعلي (clinicId) + المفاتيح البديلة (aliases) */
-const ALIAS_KEY = "live-dent-go";
-
-const buildTabUrl = (key: string, tab: string | null): string =>
+const buildUrl = (key: string, tab: string | null) =>
   tab ? `/dashboard/${key}?tab=${tab}` : `/dashboard/${key}`;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -67,84 +66,74 @@ export function OfflineWarmer() {
     let cancelled = false;
 
     (async () => {
-      // 🔑 1) انتظر SW
       const swReady = await waitForSW(SW_TIMEOUT_MS);
       if (!swReady) {
         const reloadKey = "offline-warmer:reloaded";
         if (!sessionStorage.getItem(reloadKey)) {
           sessionStorage.setItem(reloadKey, "1");
           if (!cancelled) window.location.reload();
-        } else {
-          sessionStorage.removeItem(reloadKey);
         }
         return;
       }
       if (cancelled) return;
 
-      // 🔑 2) المفتاح الأساسي فقط
       const clinicId = localStorage.getItem("currentClinicId");
       if (!clinicId) return;
 
-      // 🔑 3) URLs — نسخة واحدة لكل تاب (بدون variant مكرر)
-      const primaryUrls = DASHBOARD_TABS.map((tab) =>
-        buildTabUrl(clinicId, tab),
-      );
+      // 🔑 تجهيز المفاتيح: الـ ID الحقيقي + live-dent-go
+      const keys = [clinicId, "live-dent-go"];
 
-      // 🔑 4) تحقق من آخر تسخين
-      const storageKey = `offline:warmed:${clinicId}`;
+      // 🔑 بناء الروابط لكل مفتاح
+      const urls: string[] = [];
+      for (const key of keys) {
+        for (const tab of DASHBOARD_TABS) {
+          urls.push(buildUrl(key, tab));
+        }
+      }
+
+      if (urls.length === 0) return;
+
+      // 🔑 التحقق من وقت التخزين
+      const storageKey = `offline:warmed:${clinicId}+live-dent-go`;
       const last = Number(localStorage.getItem(storageKey) ?? 0);
       if (Date.now() - last < REWARM_INTERVAL_MS) return;
 
-      // 🔑 5) تخزين دائم
       try {
         await navigator.storage?.persist?.();
       } catch {}
 
-      // 🔑 6) ابدأ التسخين
       setVisible(true);
       setProgress(0);
-      const total = primaryUrls.length;
+
+      const total = urls.length;
       let completed = 0;
 
-      const aliasMappings: { from: string; to: string }[] = [];
-
-      for (const url of primaryUrls) {
+      // 🔑 جلب الروابط وتخزينها
+      for (const url of urls) {
         if (cancelled || !navigator.onLine) break;
 
         try {
-          const res = await fetch(url, { credentials: "include" });
-          // فقط خزّن ردوداً ناجحة
-          if (res.ok) {
-            // ابحث عن التاب المقابل لبناء الـ alias
-            const tab = url.includes("?tab=") ? url.split("?tab=")[1] : null;
-            const aliasUrl = buildTabUrl(ALIAS_KEY, tab);
-            aliasMappings.push({ from: url, to: aliasUrl });
-          }
+          await fetch(url, {
+            priority: "low",
+            credentials: "include",
+          });
         } catch {}
 
         completed++;
-        if (!cancelled) setProgress(Math.round((completed / total) * 100));
-        await sleep(REQUEST_GAP_MS);
-      }
-
-      // 🔑 7) اطلب من الـ SW نسخ الـ cache (Alias)
-      if (!cancelled && aliasMappings.length > 0) {
-        try {
-          const reg = await navigator.serviceWorker.ready;
-          reg.active?.postMessage({
-            type: "CLONE_CACHE_ALIASES",
-            mappings: aliasMappings,
-          });
-        } catch (e) {
-          console.warn("[OfflineWarmer] alias clone failed", e);
+        if (!cancelled) {
+          setProgress(Math.round((completed / total) * 100));
         }
+
+        // الانتظار بين كل طلب لمنع 503
+        await sleep(REQUEST_GAP_MS);
       }
 
       if (!cancelled) {
         localStorage.setItem(storageKey, String(Date.now()));
         sessionStorage.removeItem("offline-warmer:reloaded");
+
         setProgress(100);
-        await sleep(700);
+        await sleep(800);
         if (!cancelled) setVisible(false);
       }
     })();
@@ -163,7 +152,7 @@ export function OfflineWarmer() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 40 }}
           transition={{ duration: 0.35, ease: "easeOut" }}
-          className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[9999] w-[90%] max-w-sm pointer-events-none"
+          className="fixed inset-x-4 bottom-5 z-[9999] mx-auto w-auto max-w-sm pointer-events-none"
           dir="rtl"
         >
           <div className="rounded-2xl bg-white/95 backdrop-blur-md shadow-2xl border border-gray-100 px-4 py-3">
@@ -175,7 +164,7 @@ export function OfflineWarmer() {
               />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-800 truncate">
-                  جارٍ تهيئة التطبيق
+                  جارٍ تهيئة التطبيق أوفلاين
                 </p>
                 <p className="text-xs text-gray-500 truncate">
                   {progress < 100
