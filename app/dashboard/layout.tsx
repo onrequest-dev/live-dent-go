@@ -10,6 +10,7 @@ import { PWAInstallPrompt } from "@/components/dashboard/PWAInstallPrompt";
 import DoubleClickToExit from "@/contexts/DoubleClickToExit";
 import ToothLoader from "../../components/loding";
 import UpdateModal from "@/components/UpdateModal";
+import { OfflineWarmer } from "@/components/offline-warmer";
 
 // أقصى عدد من الصفحات للاحتفاظ بها في الذاكرة
 const MAX_CACHED_PAGES = 6;
@@ -194,8 +195,8 @@ export default function DashboardLayout({
       <ClinicProvider clinicId={clinicId}>
         <DashboardContent>{children}</DashboardContent>
         <UpdateModal />
-      </ClinicProvider>
+        <OfflineWarmer />
+        </ClinicProvider>
     </DoubleClickToExit>
-    
   );
 }
