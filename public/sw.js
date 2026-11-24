@@ -1,9 +1,19 @@
 // public/sw.js
-const CACHE = "livedent-v15";
+const CACHE = "livedent-v16";
 const OFFLINE_URL = "/offline.html";
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/", OFFLINE_URL])));
+  event.waitUntil(
+    caches.open(CACHE).then(async (cache) => {
+      for (const url of ["/", OFFLINE_URL]) {
+        try {
+          await cache.add(url);
+        } catch (e) {
+          console.warn(`[SW] skip ${url}:`, e);
+        }
+      }
+    }),
+  );
   self.skipWaiting();
 });
 
@@ -46,13 +56,11 @@ async function handle(request) {
 
     if (response && response.status === 200) {
       if (isRSC(request)) {
-        // مفتاح موحّد لـ RSC (يتجاهل headers Next الداخلية)
         const key = new Request(
           url.origin + url.pathname + url.search + "::rsc",
         );
         cache.put(key, response.clone()).catch(() => {});
       } else if (isHTML(request)) {
-        // HTML: خزّن تحت URL كامل (مع query)
         const key = new Request(url.origin + url.pathname + url.search);
         cache.put(key, response.clone()).catch(() => {});
       } else {
@@ -68,27 +76,18 @@ async function handle(request) {
       const key = new Request(url.origin + url.pathname + url.search + "::rsc");
       cached = await cache.match(key);
       if (cached) return cached;
-
-      // fallback: أي tab آخر لنفس المسار
-      cached = await cache.match(key, { ignoreSearch: true });
-      if (cached) return cached;
+      // ❌ لا ignoreSearch — يعرض محتوى tab آخر
     }
 
     if (isHTML(request)) {
-      // HTML: URL كامل أولاً (مع tab)
+      // ✅ URL كامل فقط — لا query fallback
       cached = await cache.match(
         new Request(url.origin + url.pathname + url.search),
       );
       if (cached) return cached;
-
-      // fallback: بدون query (لكن فقط إذا كنا لا نملك query)
-      if (!url.search) {
-        cached = await cache.match(new Request(url.origin + url.pathname));
-        if (cached) return cached;
-      }
     }
 
-    // تطابق تام عام
+    // تطابق تام
     cached = await cache.match(request);
     if (cached) return cached;
 

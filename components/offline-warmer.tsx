@@ -163,7 +163,7 @@ export function OfflineWarmer() {
 
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-800 truncate">
-                  جارٍ تهيئة التطبيق للأوفلاين
+                  جارٍ تهيئة التطبيق 
                 </p>
                 <p className="text-xs text-gray-500 truncate">
                   {progress < 100
