@@ -4,7 +4,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-/** تابات الـ dashboard لكل مفتاح — تتطلب مفتاح (clinicId أو live-dent-go) */
 const DASHBOARD_TABS = [
   null,
   "main",
@@ -20,34 +19,17 @@ const REQUEST_GAP_MS = 300;
 const REWARM_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const SW_TIMEOUT_MS = 3000;
 
-/**
- * بناء URL للتاب — نسختان لكل تاب:
- *  - النسخة الأساسية: ?tab=xxx
- *  - النسخة البديلة: ?tab=xxx&source=offline  (أو أي بارامتر يميّز النسخة)
- *
- * ملاحظة: إذا كان التاب null (الصفحة الرئيسية) نستخدم مسارين مختلفين.
- */
-const buildTabUrls = (key: string, tab: string | null): string[] => {
-  const base = tab ? `/dashboard/${key}?tab=${tab}` : `/dashboard/${key}`;
+/** المفتاح الأساسي الفعلي (clinicId) + المفاتيح البديلة (aliases) */
+const ALIAS_KEY = "live-dent-go";
 
-  // النسخة الثانية: نضيف بارامتر لتمييزها في الـ cache
-  const alt = tab
-    ? `/dashboard/${key}?tab=${tab}&variant=offline`
-    : `/dashboard/${key}?variant=offline`;
-
-  return [base, alt];
-};
+const buildTabUrl = (key: string, tab: string | null): string =>
+  tab ? `/dashboard/${key}?tab=${tab}` : `/dashboard/${key}`;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** انتظار تسجيل SW مع مهلة محددة */
 function waitForSW(timeoutMs: number): Promise<boolean> {
   return new Promise((resolve) => {
-    if (navigator.serviceWorker.controller) {
-      resolve(true);
-      return;
-    }
-
+    if (navigator.serviceWorker.controller) return resolve(true);
     let done = false;
     const finish = (ok: boolean) => {
       if (done) return;
@@ -55,19 +37,15 @@ function waitForSW(timeoutMs: number): Promise<boolean> {
       cleanup();
       resolve(ok);
     };
-
     const onControllerChange = () => finish(true);
     const timer = setTimeout(() => finish(false), timeoutMs);
-
     navigator.serviceWorker.addEventListener(
       "controllerchange",
       onControllerChange,
     );
-
     navigator.serviceWorker.ready
       .then(() => finish(true))
       .catch(() => finish(false));
-
     function cleanup() {
       clearTimeout(timer);
       navigator.serviceWorker.removeEventListener(
@@ -89,45 +67,31 @@ export function OfflineWarmer() {
     let cancelled = false;
 
     (async () => {
-      // 🔑 1) تحقق من SW
+      // 🔑 1) انتظر SW
       const swReady = await waitForSW(SW_TIMEOUT_MS);
-
       if (!swReady) {
         const reloadKey = "offline-warmer:reloaded";
         if (!sessionStorage.getItem(reloadKey)) {
           sessionStorage.setItem(reloadKey, "1");
           if (!cancelled) window.location.reload();
         } else {
-          console.warn("[OfflineWarmer] SW not ready after reload — skipping");
           sessionStorage.removeItem(reloadKey);
         }
         return;
       }
-
       if (cancelled) return;
 
-      // 🔑 2) بناء قائمة المفاتيح (clinicId + live-dent-go)
+      // 🔑 2) المفتاح الأساسي فقط
       const clinicId = localStorage.getItem("currentClinicId");
-      const keys: string[] = [];
+      if (!clinicId) return;
 
-      if (clinicId) keys.push(clinicId);
-      // live-dent-go يُعتبر مفتاحاً أيضاً
-      keys.push("live-dent-go");
+      // 🔑 3) URLs — نسخة واحدة لكل تاب (بدون variant مكرر)
+      const primaryUrls = DASHBOARD_TABS.map((tab) =>
+        buildTabUrl(clinicId, tab),
+      );
 
-      if (keys.length === 0) return;
-
-      // 🔑 3) بناء كل الـ URLs — نسختان لكل تاب لكل مفتاح
-      const urls: string[] = [];
-      for (const key of keys) {
-        for (const tab of DASHBOARD_TABS) {
-          urls.push(...buildTabUrls(key, tab));
-        }
-      }
-
-      if (urls.length === 0) return;
-
-      // 🔑 4) تحقق من آخر تسخين (مفتاح مركّب لكل المفاتيح)
-      const storageKey = `offline:warmed:${keys.join("+")}`;
+      // 🔑 4) تحقق من آخر تسخين
+      const storageKey = `offline:warmed:${clinicId}`;
       const last = Number(localStorage.getItem(storageKey) ?? 0);
       if (Date.now() - last < REWARM_INTERVAL_MS) return;
 
@@ -139,32 +103,46 @@ export function OfflineWarmer() {
       // 🔑 6) ابدأ التسخين
       setVisible(true);
       setProgress(0);
-
-      const total = urls.length;
+      const total = primaryUrls.length;
       let completed = 0;
 
-      for (const url of urls) {
+      const aliasMappings: { from: string; to: string }[] = [];
+
+      for (const url of primaryUrls) {
         if (cancelled || !navigator.onLine) break;
 
         try {
-          await fetch(url, {
-            priority: "low",
-            credentials: "include",
-          });
+          const res = await fetch(url, { credentials: "include" });
+          // فقط خزّن ردوداً ناجحة
+          if (res.ok) {
+            // ابحث عن التاب المقابل لبناء الـ alias
+            const tab = url.includes("?tab=") ? url.split("?tab=")[1] : null;
+            const aliasUrl = buildTabUrl(ALIAS_KEY, tab);
+            aliasMappings.push({ from: url, to: aliasUrl });
+          }
         } catch {}
 
         completed++;
-        if (!cancelled) {
-          setProgress(Math.round((completed / total) * 100));
-        }
-
+        if (!cancelled) setProgress(Math.round((completed / total) * 100));
         await sleep(REQUEST_GAP_MS);
+      }
+
+      // 🔑 7) اطلب من الـ SW نسخ الـ cache (Alias)
+      if (!cancelled && aliasMappings.length > 0) {
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          reg.active?.postMessage({
+            type: "CLONE_CACHE_ALIASES",
+            mappings: aliasMappings,
+          });
+        } catch (e) {
+          console.warn("[OfflineWarmer] alias clone failed", e);
+        }
       }
 
       if (!cancelled) {
         localStorage.setItem(storageKey, String(Date.now()));
         sessionStorage.removeItem("offline-warmer:reloaded");
-
         setProgress(100);
         await sleep(700);
         if (!cancelled) setVisible(false);
@@ -195,7 +173,6 @@ export function OfflineWarmer() {
                 transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
                 className="shrink-0 w-6 h-6 rounded-full border-2 border-blue-500 border-t-transparent"
               />
-
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-800 truncate">
                   جارٍ تهيئة التطبيق
@@ -206,12 +183,10 @@ export function OfflineWarmer() {
                     : "اكتمل! التطبيق جاهز للعمل أوفلاين ✓"}
                 </p>
               </div>
-
               <span className="text-xs font-mono text-gray-400 shrink-0">
                 {progress}%
               </span>
             </div>
-
             <div className="mt-2 h-1.5 rounded-full bg-gray-100 overflow-hidden">
               <motion.div
                 className="h-full rounded-full bg-gradient-to-l from-blue-500 to-indigo-500"

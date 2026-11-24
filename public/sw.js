@@ -2,6 +2,8 @@
 const CACHE = "livedent-v16";
 const OFFLINE_URL = "/offline.html";
 
+
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE).then(async (cache) => {
@@ -100,3 +102,26 @@ async function handle(request) {
     return new Response("Offline", { status: 503 });
   }
 }
+
+// داخل sw.ts — أضف معالج الرسائل
+self.addEventListener("message", (event) => {
+  const data = event.data;
+  if (!data || data.type !== "CLONE_CACHE_ALIASES") return;
+
+  event.waitUntil(
+    (async () => {
+      const cache = await caches.open("YOUR_PAGES_CACHE_NAME"); // ← نفس اسم الكاش المستخدم
+      for (const { from, to } of data.mappings || []) {
+        try {
+          const cached = await cache.match(from);
+          if (cached) {
+            // ننسخ الـ Response كما هو (نفس المحتوى) تحت اسم URL الجديد
+            await cache.put(to, cached.clone());
+          }
+        } catch (e) {
+          // تجاهل فشل نسخ فردي
+        }
+      }
+    })()
+  );
+});
