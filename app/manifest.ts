@@ -11,7 +11,7 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     name: 'Live-dent',
     short_name: 'LiveDent',
     description: "نظام رقمي متكامل يدير جميع جوانب عيادة الأسنان بكل احترافية وسهولة",
-    start_url: '/',
+    start_url: '/dashboard/live-dent-go',
     display: 'standalone',
     background_color: secondary_color,
     theme_color: primary_color,
