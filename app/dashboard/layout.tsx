@@ -10,6 +10,7 @@ import { PWAInstallPrompt } from "@/components/dashboard/PWAInstallPrompt";
 import DoubleClickToExit from "@/contexts/DoubleClickToExit";
 import ToothLoader from "../../components/loding";
 import UpdateModal from "@/components/UpdateModal";
+import Script from "next/script";
 
 // أقصى عدد من الصفحات للاحتفاظ بها في الذاكرة
 const MAX_CACHED_PAGES = 6;
@@ -170,7 +171,15 @@ export default function DashboardLayout({
 }) {
   const params = useParams();
   const clinicId = params?.clinicId as string;
-
+  // داخل مكون Layout الداشبورد
+  useEffect(() => {
+    if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+      // إرسال إشارة للـ SW بأن المستخدم سجل دخوله الآن
+      navigator.serviceWorker.controller.postMessage({
+        type: "USER_LOGGED_IN",
+      });
+    }
+  }, []);
   useEffect(() => {
     const refreshpage = sessionStorage.getItem("refresh_from_switch_account");
     if (refreshpage && refreshpage === "true") {
@@ -190,11 +199,49 @@ export default function DashboardLayout({
   }
 
   return (
-    <DoubleClickToExit message="اضغط مرتين للخروج من التطبيق" timeout={2000}>
-      <ClinicProvider clinicId={clinicId}>
-        <DashboardContent>{children}</DashboardContent>
-        <UpdateModal />
-      </ClinicProvider>
-    </DoubleClickToExit>
+    <>
+      <DoubleClickToExit message="اضغط مرتين للخروج من التطبيق" timeout={2000}>
+        <ClinicProvider clinicId={clinicId}>
+          <DashboardContent>{children}</DashboardContent>
+          <UpdateModal />
+        </ClinicProvider>
+      </DoubleClickToExit>
+      <Script id="register-sw" strategy="afterInteractive">
+        {`
+            if ('serviceWorker' in navigator) {
+              window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js')
+                  .then(registration => {
+                    console.log('SW registered:', registration);
+                    
+                    // ✅ إضافة هذا الجزء لإجبار التفعيل الفوري
+                    if (registration.waiting) {
+                      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    }
+                    
+                    registration.onupdatefound = () => {
+                      const installingWorker = registration.installing;
+                      if (installingWorker == null) return;
+                      
+                      installingWorker.onstatechange = () => {
+                        if (installingWorker.state === 'installed') {
+                          if (navigator.serviceWorker.controller) {
+                            // نسخة جديدة جاهزة، يمكن إخبار المستخدم هنا
+                            console.log('New content is available; please refresh.');
+                          } else {
+                            console.log('Content is cached for offline use.');
+                          }
+                        }
+                      };
+                    };
+                  })
+                  .catch(error => {
+                    console.error('SW registration failed:', error);
+                  });
+              });
+            }
+          `}
+      </Script>
+    </>
   );
 }

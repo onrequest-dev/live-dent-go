@@ -1,6 +1,6 @@
 // public/sw.js
 
-const CACHE_NAME = "livedent-go-v9"; 
+const CACHE_NAME = "livedent-go-v10"; 
 
 // الصفحات الثابتة الأساسية (تُخزن دائماً)
 const STATIC_ASSETS = [ "/offline.html"];
@@ -15,6 +15,13 @@ const DASHBOARD_TABS = [
   "?tab=clinic",
   "?tab=cv",
 ];
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "USER_LOGGED_IN") {
+    console.log("[SW] User just logged in. Triggering dashboard precache...");
+    // يمكنك هنا إعادة تشغيل منطق التخزين المسبق للداشبورد
+    // أو ببساطة إخبار المستخدم بإعادة تحميل الصفحة
+  }
+});
 
 self.addEventListener("install", (event) => {
   console.log("[SW] Installing v8...");
