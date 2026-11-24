@@ -1,17 +1,21 @@
 // public/sw.js
 
-const CACHE_NAME = "livedent-go-v1";
-const ASSETS_TO_CACHE = ["/", "/offline.html"];
+const CACHE_NAME = "livedent-go-v2"; // ✅ تغيير الإصدار لإجبار التحديث
+const STATIC_ASSETS = [
+  "/",
+  "/offline.html",
+  // أضف هنا الأيقونات أو الخطوط الثابتة إن وجدت
+];
 
-// ✅ 1. التثبيت
+// ✅ التثبيت وتخزين الأساسيات فقط
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE)),
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)),
   );
   self.skipWaiting();
 });
 
-// ✅ 2. التنظيف
+// ✅ التنظيف
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
@@ -25,53 +29,44 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// ✅ 3. الاعتراض الذكي (Network First Strict)
+// ✅ الاعتراض الذكي والمخصص لـ Next.js
 self.addEventListener("fetch", (event) => {
   const { request } = event;
 
-  // تجاهل أي طلب ليس GET (مثل POST, PUT, DELETE)
-  // هذه الطلبات ستذهب للشبكة مباشرة، وإذا فشلت سيعالجها كود التطبيق (IndexedDB)
+  // تجاهل طلبات POST/PUT/DELETE تماماً
   if (request.method !== "GET") return;
 
+  // تحديد نوع الطلب (صفحة HTML أم ملف ثابت أم API)
+  const isHtmlRequest = request.headers.get("accept")?.includes("text/html");
+  const isNextAsset = request.url.includes("/_next/");
+
   event.respondWith(
-    fetch(request)
-      .then((networkResponse) => {
-        // ✅ نحن هنا لأن الإنترنت موجود والطلب نجح
+    caches.match(request).then((cachedResponse) => {
+      // 1. إذا وجدنا نسخة مخزنة، نعرضها فوراً (للسرعة القصوى أوفلاين)
+      if (cachedResponse) {
+        return cachedResponse;
+      }
 
-        // تحديث الكاش في الخلفية للاستخدام المستقبلي عند انقطاع النت
-        // ملاحظة: نقوم بعمل clone لأن الـ Response يمكن قراءته مرة واحدة فقط
-        const responseToCache = networkResponse.clone();
-
-        caches.open(CACHE_NAME).then((cache) => {
-          // نحفظ فقط الاستجابات الناجحة (Status 200)
-          if (networkResponse.status === 200) {
-            cache.put(request, responseToCache);
+      // 2. إذا لم تكن مخزنة، نذهب للشبكة
+      return fetch(request)
+        .then((response) => {
+          // نخزن فقط الاستجابات الناجحة
+          if (response.status === 200) {
+            const responseToCache = response.clone();
+            caches
+              .open(CACHE_NAME)
+              .then((cache) => cache.put(request, responseToCache));
           }
-        });
-
-        // إرجاع الاستجابة الجديدة من السيرفر للمستخدم فوراً
-        return networkResponse;
-      })
-      .catch(() => {
-        // ✅ نحن هنا لأن الإنترنت غير موجود أو فشل الطلب
-
-        // محاولة البحث عن نسخة مخزنة سابقاً
-        return caches.match(request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse; // عرض البيانات القديمة
-          }
-
-          // إذا لم يوجد كاش (صفحة جديدة)، عرض صفحة الأوفلاين
-          if (request.headers.get("accept").includes("text/html")) {
+          return response;
+        })
+        .catch(() => {
+          // 3. فشل الشبكة + لا يوجد كاش = عرض صفحة الأوفلاين (للصفحات فقط)
+          if (isHtmlRequest) {
             return caches.match("/offline.html");
           }
-
-          // لطلبات API الفاشلة وغير الموجودة في الكاش، نعيد خطأ ليتم معالجته من قبل التطبيق
-          return new Response(JSON.stringify({ error: "Offline" }), {
-            headers: { "Content-Type": "application/json" },
-            status: 503,
-          });
+          // لملفات JS/CSS/API الفاشلة، نرجع خطأ ليتم التعامل معه داخلياً
+          return new Response("Offline", { status: 503 });
         });
-      }),
+    }),
   );
 });
