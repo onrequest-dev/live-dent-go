@@ -36,10 +36,31 @@ export default function RootLayout({
               window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/sw.js')
                   .then(registration => {
-                    console.log('SW registered: ', registration);
+                    console.log('SW registered:', registration);
+                    
+                    // ✅ إضافة هذا الجزء لإجبار التفعيل الفوري
+                    if (registration.waiting) {
+                      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    }
+                    
+                    registration.onupdatefound = () => {
+                      const installingWorker = registration.installing;
+                      if (installingWorker == null) return;
+                      
+                      installingWorker.onstatechange = () => {
+                        if (installingWorker.state === 'installed') {
+                          if (navigator.serviceWorker.controller) {
+                            // نسخة جديدة جاهزة، يمكن إخبار المستخدم هنا
+                            console.log('New content is available; please refresh.');
+                          } else {
+                            console.log('Content is cached for offline use.');
+                          }
+                        }
+                      };
+                    };
                   })
-                  .catch(registrationError => {
-                    console.log('SW registration failed: ', registrationError);
+                  .catch(error => {
+                    console.error('SW registration failed:', error);
                   });
               });
             }
