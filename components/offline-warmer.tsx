@@ -1,9 +1,10 @@
-// src/components/offline-warmer.tsx
+// components/offline-warmer.tsx
 "use client";
 
 import { useEffect } from "react";
 
 const DASHBOARD_TABS = [
+  null,
   "main",
   "patients",
   "schedule",
@@ -51,7 +52,6 @@ export function OfflineWarmer() {
         if (cancelled || !navigator.onLine) return;
         const url = buildUrl(clinicId, tab);
 
-        // HTML فقط — لا RSC يدوي
         try {
           await fetch(url, {
             priority: "low",

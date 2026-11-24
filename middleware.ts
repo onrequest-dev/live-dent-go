@@ -46,7 +46,7 @@ export function middleware(request: NextRequest) {
     if(suspended) return NextResponse.redirect(new URL('/suspended', request.url))
     const clinicId = request.cookies.get('clinic_id')?.value
     if(!clinicId) return NextResponse.redirect(new URL('/log-in', request.url))
-    return NextResponse.redirect(new URL(`/dashboard/${clinicId}`, request.url))
+    return NextResponse.redirect(new URL(`/dashboard/${clinicId}?tab=main`, request.url))
   }
   const openPaths = ['/',  '/log-in', '/privacy-and-terms']
   if (openPaths.includes(pathname)) {

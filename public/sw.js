@@ -1,5 +1,5 @@
 // public/sw.js
-const CACHE = "livedent-v14";
+const CACHE = "livedent-v15";
 const OFFLINE_URL = "/offline.html";
 
 self.addEventListener("install", (event) => {
@@ -40,30 +40,21 @@ async function handle(request) {
   const cache = await caches.open(CACHE);
   const url = new URL(request.url);
 
-  // مفتاح موحّد
-  const rscKey = () =>
-    new Request(url.origin + url.pathname + url.search + "::rsc");
-
   // 1) أونلاين أولاً
   try {
     const response = await fetch(request);
 
     if (response && response.status === 200) {
       if (isRSC(request)) {
-        // خزّن RSC تحت مفتاح موحّد (يتجاهل headers Next الداخلية)
-        cache.put(rscKey(), response.clone()).catch(() => {});
+        // مفتاح موحّد لـ RSC (يتجاهل headers Next الداخلية)
+        const key = new Request(
+          url.origin + url.pathname + url.search + "::rsc",
+        );
+        cache.put(key, response.clone()).catch(() => {});
       } else if (isHTML(request)) {
-        // خزّن HTML تحت pathname (بدون query) — يخدم كل التابات
-        cache
-          .put(new Request(url.origin + url.pathname), response.clone())
-          .catch(() => {});
-        // وخزّن أيضاً تحت URL الكامل
-        cache
-          .put(
-            new Request(url.origin + url.pathname + url.search),
-            response.clone(),
-          )
-          .catch(() => {});
+        // HTML: خزّن تحت URL كامل (مع query)
+        const key = new Request(url.origin + url.pathname + url.search);
+        cache.put(key, response.clone()).catch(() => {});
       } else {
         cache.put(request, response.clone()).catch(() => {});
       }
@@ -74,30 +65,34 @@ async function handle(request) {
     let cached;
 
     if (isRSC(request)) {
-      // RSC: طابق الرابط الكامل أولاً
-      cached = await cache.match(rscKey());
+      const key = new Request(url.origin + url.pathname + url.search + "::rsc");
+      cached = await cache.match(key);
       if (cached) return cached;
-      // ثم أي tab آخر لنفس المسار
-      cached = await cache.match(rscKey(), { ignoreSearch: true });
+
+      // fallback: أي tab آخر لنفس المسار
+      cached = await cache.match(key, { ignoreSearch: true });
       if (cached) return cached;
     }
 
     if (isHTML(request)) {
-      // HTML: URL كامل
+      // HTML: URL كامل أولاً (مع tab)
       cached = await cache.match(
         new Request(url.origin + url.pathname + url.search),
       );
       if (cached) return cached;
-      // بدون query
-      cached = await cache.match(new Request(url.origin + url.pathname));
-      if (cached) return cached;
+
+      // fallback: بدون query (لكن فقط إذا كنا لا نملك query)
+      if (!url.search) {
+        cached = await cache.match(new Request(url.origin + url.pathname));
+        if (cached) return cached;
+      }
     }
 
     // تطابق تام عام
     cached = await cache.match(request);
     if (cached) return cached;
 
-    // fallback
+    // fallback نهائي
     if (isHTML(request)) {
       const off = await cache.match(OFFLINE_URL);
       if (off) return off;
