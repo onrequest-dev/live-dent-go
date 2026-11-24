@@ -392,7 +392,7 @@ const sections: { id: SettingsSection; label: string; icon: any }[] = [
     </div>
   </SectionCard>
 </div>
-              <SectionCard title="تطبيق الهاتف" icon={Smartphone} primaryColor={primaryColor}>
+              <SectionCard title="تطبيق " icon={Smartphone} primaryColor={primaryColor}>
                 <PWAInstallSection
                   isInstalled={isInstalled}
                   isInstallable={isInstallable}
