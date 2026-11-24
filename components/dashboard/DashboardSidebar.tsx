@@ -1,23 +1,16 @@
 // components/dashboard/DashboardSidebar.tsx
 "use client";
 
-import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import {
-  LayoutDashboard,
   Building2,
   UserCircle,
   ChevronLeft,
   ChevronRight,
-  Settings,
   Menu,
   X,
-  TableProperties,
-  CalendarDays,
-  Stethoscope,
 } from "lucide-react";
 // ✅ استيراد أيقونات react-icons
 import { 
@@ -28,6 +21,7 @@ import {
   FaCog 
 } from "react-icons/fa";
 import { Clinic } from "@/types";
+import Image from "next/image";
 
 // ✅ التبويبات الظاهرة في القائمة الجانبية (للشاشات الكبيرة)
 const visibleMenuItems = [

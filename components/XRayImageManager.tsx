@@ -1,7 +1,7 @@
 // components/XRayImageManager.tsx
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   getPatientImages,
   addXRayImage,
@@ -45,12 +45,18 @@ export default function XRayImageManager({
   }, [patientId]);
 
   // تحميل الصور عند تغيير patientId
+  const urlsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    urlsRef.current = new Set(
+      images.map((i) => i.localUrl).filter(Boolean) as string[],
+    );
+  }, [images]);
+
   useEffect(() => {
     loadImages();
-
-    // تنظيف الروابط عند فك المكون
     return () => {
-      images.forEach((img) => revokeLocalUrl(img.localUrl));
+      urlsRef.current.forEach((url) => revokeLocalUrl(url));
+      urlsRef.current.clear();
       if (previewUrl) revokeLocalUrl(previewUrl);
     };
   }, [loadImages, patientId]);

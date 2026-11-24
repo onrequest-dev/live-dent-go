@@ -1067,13 +1067,24 @@ export function XRayViewerButton({
     if (isOpen) loadImages();
   }, [isOpen, patientId]);
 
+  const blobUrlsRef = useRef<Set<string>>(new Set());
+
+  // تتبّع الروابط الحالية دون تبطيلها عند كل تغيير
+  useEffect(() => {
+    blobUrlsRef.current = new Set(
+      images.map((i) => i.localUrl).filter(Boolean) as string[],
+    );
+  }, [images]);
+
+  // تبطيل عند unmount فقط
   useEffect(() => {
     return () => {
-      images.forEach((img) => {
-        if (img.localUrl?.startsWith("blob:")) revokeLocalUrl(img.localUrl);
+      blobUrlsRef.current.forEach((url) => {
+        if (url.startsWith("blob:")) revokeLocalUrl(url);
       });
+      blobUrlsRef.current.clear();
     };
-  }, [images]);
+  }, []);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {

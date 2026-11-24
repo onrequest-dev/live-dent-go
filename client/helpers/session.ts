@@ -2,66 +2,67 @@
 
 import { Session } from "@/types";
 import { ApiResponse } from "./fetch_with_retry";
+import { db } from "@/lib/main-db"; // استيراد قاعدة البيانات المحلية
+import { getMyClinicIdOffline } from "./get-myclinic-id-offline";
+
+// دالة مساعدة لتوليد UUID محلياً
+const generateId = () => {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback للمتصفحات القديمة جداً
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
 
 // ============================================================
 // إنشاء جلسة جديدة
 // ============================================================
 export async function createSession(
-    credentials : Omit<Session, 'id' | 'clinicId' | 'createdAt'> & {
-  info: {
-    clinicName: string;
-    patientName: string;
-    gender:string;
-    phoneNumber:string;
-    prevent_auto_messages:boolean;
-  };
-}
+  credentials: Omit<Session, "id" | "clinicId" | "createdAt"> & {
+    info: {
+      clinicName: string;
+      patientName: string;
+      gender: string;
+      phoneNumber: string;
+      prevent_auto_messages: boolean;
+    };
+  }
 ): Promise<ApiResponse<Session>> {
-    try {
-        const response = await fetch('/api/v1/clinic/session', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-            body: JSON.stringify(credentials),
-        });
+  try {
+    const clinicId = await getMyClinicIdOffline();
 
-        const data = await response.json();
+    // ✅ نحافظ على نفس شكل الكائن تماماً، نضيف فقط id و clinicId
+    const newSession = {
+      ...credentials,
+      id: generateId(),
+      clinicId: clinicId,
+    } as Session; // Type assertion لضمان التوافق مع الـ Return Type
 
-        if (!response.ok) {
-            return {
-                success: false,
-                error: data.message || data.error || 'فشل في إنشاء الجلسة',
-            };
-        }
+    // ✅ التخزين المحلي بدلاً من الـ API و sessionStorage
+    await db.sessions.add(newSession);
 
-        // ✅ استخراج كائن الجلسة بنفس الشكل تماماً
-        const session = data.data || data;
-
-        // ✅ تحديث مصفوفة newsessions في sessionStorage
-        const stored = sessionStorage.getItem('newsessions');
-        const newSessions: Session[] = stored ? JSON.parse(stored) : [];
-        newSessions.push(session);
-        sessionStorage.setItem('newsessions', JSON.stringify(newSessions));
-
-        return {
-            success: true,
-            data: session,
-        };
-    } catch (error) {
-        console.error('Create session error:', error);
-        return {
-            success: false,
-            error: 'حدث خطأ في الاتصال بالخادم',
-        };
-    }
+    return {
+      success: true,
+      data: newSession,
+    };
+  } catch (error) {
+    console.error("Create session error (Local DB):", error);
+    return {
+      success: false,
+      error: "فشل في حفظ الجلسة محلياً",
+    };
+  }
 }
 
-
-// ✅ دالة إنشاء عدة مواعيد بطلب واحد
+// ============================================================
+// إنشاء عدة مواعيد بطلب واحد
+// ============================================================
 export async function createBulkSessions(
-  sessions: (Omit<Session, 'id' | 'clinicId' | 'createdAt'> & {
+  sessionsPayload: (Omit<Session, "id" | "clinicId" | "createdAt"> & {
     info: {
       clinicName: string;
       patientName: string;
@@ -71,408 +72,315 @@ export async function createBulkSessions(
     };
   })[]
 ): Promise<ApiResponse<Session[]>> {
-    try {
-const response = await fetch('/api/v1/clinic/session/bulk', {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-    },
-    credentials: 'include',
-    body: JSON.stringify({ sessions: sessions }),
-});
+  try {
+    const clinicId = await getMyClinicIdOffline();
 
-        const data = await response.json();
+    // ✅ نحافظ على نفس شكل الكائنات تماماً
+    const newSessions = sessionsPayload.map((payload) => ({
+      ...payload,
+      id: generateId(),
+      clinicId: clinicId,
+    })) as Session[];
 
-        if (!response.ok) {
-            return {
-                success: false,
-                error: data.message || data.error || 'فشل في إنشاء الجلسات',
-            };
-        }
+    // ✅ التخزين المحلي الدفعي (أسرع وأأمن من الحلقة)
+    await db.sessions.bulkAdd(newSessions);
 
-        const createdSessions: Session[] = data.data || data.sessions || data;
-
-        // ✅ تحديث newsessions في sessionStorage
-        const stored = sessionStorage.getItem('newsessions');
-        const newSessions: Session[] = stored ? JSON.parse(stored) : [];
-        newSessions.push(...createdSessions);
-        sessionStorage.setItem('newsessions', JSON.stringify(newSessions));
-
-        return {
-            success: true,
-            data: createdSessions,
-        };
-    } catch (error) {
-        console.error('Create bulk sessions error:', error);
-        return {
-            success: false,
-            error: 'حدث خطأ في الاتصال بالخادم',
-        };
-    }
+    return {
+      success: true,
+      data: newSessions,
+    };
+  } catch (error) {
+    console.error("Create bulk sessions error (Local DB):", error);
+    return {
+      success: false,
+      error: "فشل في حفظ الجلسات محلياً",
+    };
+  }
 }
+
 // ============================================================
 // تحديث جلسة موجودة
 // ============================================================
 export async function updateSession(
-    sessionId: string,
-    updateData: Partial<Omit<Session, 'id' | 'clinicId' | 'createdAt'>>
+  sessionId: string,
+  updateData: Partial<Omit<Session, "id" | "clinicId" | "createdAt">>
 ): Promise<ApiResponse<Session>> {
-    try {
-        const response = await fetch(`/api/v1/clinic/session/?sessionId=${sessionId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-            body: JSON.stringify(updateData),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            return {
-                success: false,
-                error: data.message || data.error || 'فشل في تحديث الجلسة',
-            };
-        }
-
-        return {
-            success: true,
-            data: data.data || data,
-        };
-    } catch (error) {
-        console.error('Update session error:', error);
-        return {
-            success: false,
-            error: 'حدث خطأ في الاتصال بالخادم',
-        };
+  try {
+    const clinicId = await getMyClinicIdOffline();
+    
+    // التحقق من الملكية قبل التحديث
+    const existing = await db.sessions.get(sessionId);
+    if (!existing || existing.clinicId !== clinicId) {
+      return { success: false, error: "الجلسة غير موجودة أو غير مصرح بها" };
     }
+
+    await db.sessions.update(sessionId, updateData);
+    const updatedSession = await db.sessions.get(sessionId);
+
+    return {
+      success: true,
+      data: updatedSession!,
+    };
+  } catch (error) {
+    console.error("Update session error (Local DB):", error);
+    return {
+      success: false,
+      error: "حدث خطأ أثناء تحديث الجلسة محلياً",
+    };
+  }
 }
 
 // ============================================================
 // حذف جلسة
 // ============================================================
-export async function deleteSession(
-    sessionId: string
-): Promise<ApiResponse<null>> {
-    try {
-        const response = await fetch(`/api/v1/clinic/session/?sessionId=${sessionId}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            return {
-                success: false,
-                error: data.message || data.error || 'فشل في حذف الجلسة',
-            };
-        }
-
-        return {
-            success: true,
-            data: null,
-        };
-    } catch (error) {
-        console.error('Delete session error:', error);
-        return {
-            success: false,
-            error: 'حدث خطأ في الاتصال بالخادم',
-        };
+export async function deleteSession(sessionId: string): Promise<ApiResponse<null>> {
+  try {
+    const clinicId = await getMyClinicIdOffline();
+    const existing = await db.sessions.get(sessionId);
+    
+    if (!existing || existing.clinicId !== clinicId) {
+      return { success: false, error: "الجلسة غير موجودة أو غير مصرح بها" };
     }
+
+    await db.sessions.delete(sessionId);
+
+    return {
+      success: true,
+      data: null,
+    };
+  } catch (error) {
+    console.error("Delete session error (Local DB):", error);
+    return {
+      success: false,
+      error: "حدث خطأ أثناء حذف الجلسة محلياً",
+    };
+  }
 }
 
 // ============================================================
 // جلب جلسة واحدة
 // ============================================================
-export async function getSession(
-    sessionId: string
-): Promise<ApiResponse<Session>> {
-    try {
-        const response = await fetch(`/api/v1/clinic/session/${sessionId}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-        });
+export async function getSession(sessionId: string): Promise<ApiResponse<Session>> {
+  try {
+    const clinicId = await getMyClinicIdOffline();
+    const session = await db.sessions.get(sessionId);
 
-        const data = await response.json();
-
-        if (!response.ok) {
-            return {
-                success: false,
-                error: data.message || data.error || 'فشل في جلب الجلسة',
-            };
-        }
-
-        return {
-            success: true,
-            data: data.data || data,
-        };
-    } catch (error) {
-        console.error('Get session error:', error);
-        return {
-            success: false,
-            error: 'حدث خطأ في الاتصال بالخادم',
-        };
+    if (!session || session.clinicId !== clinicId) {
+      return { success: false, error: "الجلسة غير موجودة" };
     }
+
+    return {
+      success: true,
+      data: session,
+    };
+  } catch (error) {
+    console.error("Get session error (Local DB):", error);
+    return {
+      success: false,
+      error: "حدث خطأ في جلب البيانات محلياً",
+    };
+  }
 }
 
 // ============================================================
 // جلب جميع الجلسات
 // ============================================================
 export async function getAllSessions(): Promise<ApiResponse<Session[]>> {
-    try {
-        const response = await fetch('/api/v1/clinic/sessions', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-        });
+  try {
+    const clinicId = await getMyClinicIdOffline();
+    const sessions = await db.sessions.where("clinicId").equals(clinicId).toArray();
 
-        const data = await response.json();
-
-        if (!response.ok) {
-            return {
-                success: false,
-                error: data.message || data.error || 'فشل في جلب الجلسات',
-            };
-        }
-// console.log("Fetched all sessions: ", data.data || data );
-        return {
-            success: true,
-            data: data.data || data,
-        };
-    } catch (error) {
-        console.error('Get all sessions error:', error);
-        return {
-            success: false,
-            error: 'حدث خطأ في الاتصال بالخادم',
-        };
-    }
+    return {
+      success: true,
+      data: sessions,
+    };
+  } catch (error) {
+    console.error("Get all sessions error (Local DB):", error);
+    return {
+      success: false,
+      error: "حدث خطأ في جلب البيانات محلياً",
+    };
+  }
 }
 
 // ============================================================
 // جلب جلسات مريض محدد
 // ============================================================
-export async function getPatientSessions(
-    patientId: string
-): Promise<ApiResponse<Session[]>> {
-    try {
-        const response = await fetch(`/api/v1/clinic/sessions?patientId=${patientId}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-        });
+export async function getPatientSessions(patientId: string): Promise<ApiResponse<Session[]>> {
+  try {
+    const clinicId = await getMyClinicIdOffline();
+    const sessions = await db.sessions
+      .where("clinicId")
+      .equals(clinicId)
+      .and((session) => session.patientId === patientId)
+      .toArray();
 
-        const data = await response.json();
-
-        if (!response.ok) {
-            return {
-                success: false,
-                error: data.message || data.error || 'فشل في جلب جلسات المريض',
-            };
-        }
-
-        return {
-            success: true,
-            data: data.data || data,
-        };
-    } catch (error) {
-        console.error('Get patient sessions error:', error);
-        return {
-            success: false,
-            error: 'حدث خطأ في الاتصال بالخادم',
-        };
-    }
+    return {
+      success: true,
+      data: sessions,
+    };
+  } catch (error) {
+    console.error("Get patient sessions error (Local DB):", error);
+    return {
+      success: false,
+      error: "حدث خطأ في جلب بيانات المريض محلياً",
+    };
+  }
 }
 
 // ============================================================
 // جلب جلسات اليوم
 // ============================================================
 export async function getTodaySessions(): Promise<ApiResponse<Session[]>> {
-    try {
-        const today = new Date().toISOString().split('T')[0];
-        const response = await fetch(`/api/v1/clinic/sessions?date=${today}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-        });
+  try {
+    const clinicId = await getMyClinicIdOffline();
+    
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
 
-        const data = await response.json();
+    const sessions = await db.sessions
+      .where("clinicId")
+      .equals(clinicId)
+      .and((session) => {
+        const sessionDate = new Date(session.startTime);
+        return sessionDate >= startOfDay && sessionDate <= endOfDay;
+      })
+      .toArray();
 
-        if (!response.ok) {
-            return {
-                success: false,
-                error: data.message || data.error || 'فشل في جلب جلسات اليوم',
-            };
-        }
-
-        return {
-            success: true,
-            data: data.data || data,
-        };
-    } catch (error) {
-        console.error('Get today sessions error:', error);
-        return {
-            success: false,
-            error: 'حدث خطأ في الاتصال بالخادم',
-        };
-    }
+    return {
+      success: true,
+      data: sessions,
+    };
+  } catch (error) {
+    console.error("Get today sessions error (Local DB):", error);
+    return {
+      success: false,
+      error: "حدث خطأ في جلب جلسات اليوم محلياً",
+    };
+  }
 }
 
 // ============================================================
 // جلب الجلسات حسب التاريخ
 // ============================================================
-export async function getSessionsByDate(
-    date: Date | string
-): Promise<ApiResponse<Session[]>> {
-    try {
-        const dateStr = typeof date === 'string' ? date : date.toISOString().split('T')[0];
-        const response = await fetch(`/api/v1/clinic/sessions?date=${dateStr}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-        });
+export async function getSessionsByDate(date: Date | string): Promise<ApiResponse<Session[]>> {
+  try {
+    const clinicId = await getMyClinicIdOffline();
+    const targetDate = new Date(date);
+    
+    const startOfDay = new Date(targetDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date(targetDate);
+    endOfDay.setHours(23, 59, 59, 999);
 
-        const data = await response.json();
+    const sessions = await db.sessions
+      .where("clinicId")
+      .equals(clinicId)
+      .and((session) => {
+        const sessionDate = new Date(session.startTime);
+        return sessionDate >= startOfDay && sessionDate <= endOfDay;
+      })
+      .toArray();
 
-        if (!response.ok) {
-            return {
-                success: false,
-                error: data.message || data.error || 'فشل في جلب الجلسات',
-            };
-        }
-
-        return {
-            success: true,
-            data: data.data || data,
-        };
-    } catch (error) {
-        console.error('Get sessions by date error:', error);
-        return {
-            success: false,
-            error: 'حدث خطأ في الاتصال بالخادم',
-        };
-    }
+    return {
+      success: true,
+      data: sessions,
+    };
+  } catch (error) {
+    console.error("Get sessions by date error (Local DB):", error);
+    return {
+      success: false,
+      error: "حدث خطأ في جلب الجلسات محلياً",
+    };
+  }
 }
 
 // ============================================================
 // جلب الجلسات حسب الحالة
 // ============================================================
-export async function getSessionsByStatus(
-    status: Session['status']
-): Promise<ApiResponse<Session[]>> {
-    try {
-        const response = await fetch(`/api/v1/clinic/sessions?status=${status}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-        });
+export async function getSessionsByStatus(status: Session["status"]): Promise<ApiResponse<Session[]>> {
+  try {
+    const clinicId = await getMyClinicIdOffline();
+    const sessions = await db.sessions
+      .where("clinicId")
+      .equals(clinicId)
+      .and((session) => session.status === status)
+      .toArray();
 
-        const data = await response.json();
-
-        if (!response.ok) {
-            return {
-                success: false,
-                error: data.message || data.error || 'فشل في جلب الجلسات',
-            };
-        }
-
-        return {
-            success: true,
-            data: data.data || data,
-        };
-    } catch (error) {
-        console.error('Get sessions by status error:', error);
-        return {
-            success: false,
-            error: 'حدث خطأ في الاتصال بالخادم',
-        };
-    }
+    return {
+      success: true,
+      data: sessions,
+    };
+  } catch (error) {
+    console.error("Get sessions by status error (Local DB):", error);
+    return {
+      success: false,
+      error: "حدث خطأ في جلب الجلسات محلياً",
+    };
+  }
 }
 
 // ============================================================
 // تحديث حالة الجلسة فقط
 // ============================================================
 export async function updateSessionStatus(
-    sessionId: string,
-    status: Session['status']
+  sessionId: string,
+  status: Session["status"]
 ): Promise<ApiResponse<Session>> {
-    return updateSession(sessionId, { status });
+  return updateSession(sessionId, { status });
 }
 
 // ============================================================
 // تحديث حالة الدفع للجلسة
 // ============================================================
 export async function updateSessionPayment(
-    sessionId: string,
-    isPaid: boolean,
-    paymentMethod?: 'cash' | 'transfer'
+  sessionId: string,
+  isPaid: boolean,
+  paymentMethod?: "cash" | "card" | "transfer"
 ): Promise<ApiResponse<Session>> {
-    const updateData: Partial<Session> = {
-        isPaid,
-        paidAt: isPaid ? new Date() : undefined,
-        paymentMethod: isPaid ? paymentMethod : undefined,
-    };
-    
-    return updateSession(sessionId, updateData);
+  const updateData: Partial<Session> = {
+    isPaid,
+    paidAt: isPaid ? new Date() : undefined,
+    paymentMethod: isPaid ? paymentMethod : undefined,
+  };
+  
+  return updateSession(sessionId, updateData);
 }
 
 // ============================================================
 // جلب الجلسات في نطاق زمني
 // ============================================================
 export async function getSessionsInRange(
-    startDate: Date | string,
-    endDate: Date | string
+  startDate: Date | string,
+  endDate: Date | string
 ): Promise<ApiResponse<Session[]>> {
-    try {
-        const start = typeof startDate === 'string' ? startDate : startDate.toISOString();
-        const end = typeof endDate === 'string' ? endDate : endDate.toISOString();
-        
-        const response = await fetch(
-            `/api/v1/clinic/sessions?startDate=${start}&endDate=${end}`,
-            {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include',
-            }
-        );
+  try {
+    const clinicId = await getMyClinicIdOffline();
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    const sessions = await db.sessions
+      .where("clinicId")
+      .equals(clinicId)
+      .and((session) => {
+        const sessionDate = new Date(session.startTime);
+        return sessionDate >= start && sessionDate <= end;
+      })
+      .toArray();
 
-        const data = await response.json();
-
-        if (!response.ok) {
-            return {
-                success: false,
-                error: data.message || data.error || 'فشل في جلب الجلسات',
-            };
-        }
-
-        return {
-            success: true,
-            data: data.data || data,
-        };
-    } catch (error) {
-        console.error('Get sessions in range error:', error);
-        return {
-            success: false,
-            error: 'حدث خطأ في الاتصال بالخادم',
-        };
-    }
+    return {
+      success: true,
+      data: sessions,
+    };
+  } catch (error) {
+    console.error("Get sessions in range error (Local DB):", error);
+    return {
+      success: false,
+      error: "حدث خطأ في جلب النطاق الزمني محلياً",
+    };
+  }
 }

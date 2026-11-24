@@ -1,4 +1,7 @@
-// @/lib/api/templates.ts
+// helpers/templates.ts
+
+import { db } from "@/lib/main-db"; // استيراد قاعدة البيانات الموحدة
+import { getMyClinicIdOffline } from "./get-myclinic-id-offline";
 
 export type ApiResponse<T = any> = {
   success: boolean;
@@ -7,63 +10,70 @@ export type ApiResponse<T = any> = {
 };
 
 /**
- * جلب القوالب من الباك اند
- * السيرفر يعيد: { data: { id, owner_id, template: [...], created_at } | null }
+ * جلب القوالب محلياً (بدون اتصال بالشبكة)
+ * يحافظ على نفس شكل المخرجات الذي تتوقعه الـ UI
  */
 export async function fetchTemplates(): Promise<ApiResponse<any[]>> {
   try {
-    const response = await fetch("/api/v1/clinic/templates", {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
+    const clinicId =  getMyClinicIdOffline();
 
-    const result = await response.json();
+    // جلب جميع القوالب التابعة لهذه العيادة فقط من قاعدة البيانات المحلية
+    const localRecords = await db.templates
+      .where("clinicId")
+      .equals(clinicId)
+      .toArray();
 
-    if (!response.ok) {
-      return {
-        success: false,
-        error: result.error || "حدث خطأ أثناء جلب القوالب",
-      };
-    }
+    // استخراج بيانات القوالب فقط لتطابق الشكل القديم (مصفوفة من الكائنات)
+    const templatesArray = localRecords.map((record) => record.templateData);
 
-    // ✅ حقل القوالب اسمه template داخل الصف
-    const templates = result.data?.template || [];
-
-    return { success: true, data: templates };
+    return { 
+      success: true, 
+      data: templatesArray 
+    };
   } catch (error) {
-    console.error("Fetch templates error:", error);
-    return { success: false, error: "فشل الاتصال بالخادم" };
+    console.error("Fetch templates error (Local DB):", error);
+    return { 
+      success: false, 
+      error: "فشل جلب القوالب من التخزين المحلي" 
+    };
   }
 }
 
 /**
- * حفظ القوالب (insert أو update)
- * السيرفر يتعامل مع INSERT و UPDATE
+ * حفظ القوالب محلياً (بدون اتصال بالشبكة)
+ * يقوم بمسح القوالب القديمة لهذه العيادة واستبدالها بالجديدة لمنع التكرار
  */
 export async function saveTemplates(
   templates: any[]
 ): Promise<ApiResponse<any>> {
   try {
-    const response = await fetch("/api/v1/clinic/templates", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ template: templates }),
-    });
+    const clinicId =  getMyClinicIdOffline();
 
-    const result = await response.json();
+    // 1. حذف أي قوالب قديمة تابعة لهذه العيادة لضمان عدم وجود تكرار
+    await db.templates.where("clinicId").equals(clinicId).delete();
 
-    if (!response.ok) {
-      return {
-        success: false,
-        error: result.error || "حدث خطأ أثناء حفظ القوالب",
-      };
+    // 2. تجهيز البيانات للإدخال مع إضافة معرف فريد ومعرف العيادة
+    const recordsToAdd = templates.map((templateData, index) => ({
+      id: templateData.id || `tpl_${Date.now()}_${index}`, // توليد id إذا لم يكن موجوداً
+      clinicId: clinicId,
+      templateData: templateData, // نحتفظ بالبيانات الأصلية كما هي
+    }));
+
+    // 3. حفظ الدفعات الجديدة في قاعدة البيانات المحلية
+    if (recordsToAdd.length > 0) {
+      await db.templates.bulkAdd(recordsToAdd);
     }
 
-    return { success: true, data: result.data };
+    // 4. إرجاع استجابة نجاح بنفس الشكل الذي تتوقعه الـ UI
+    return { 
+      success: true, 
+      data: { message: "تم حفظ القوالب محلياً بنجاح" } 
+    };
   } catch (error) {
-    console.error("Save templates error:", error);
-    return { success: false, error: "فشل الاتصال بالخادم" };
+    console.error("Save templates error (Local DB):", error);
+    return { 
+      success: false, 
+      error: "فشل حفظ القوالب في التخزين المحلي" 
+    };
   }
 }

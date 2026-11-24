@@ -3,7 +3,6 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
-import Image from "next/image";
 import {
   Building2,
   Check,
@@ -13,6 +12,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { switchClinic } from "@/client/helpers/switch_accounts";
+import Image from "next/image";
 
 interface ClinicAccount {
   id: string;
@@ -28,6 +28,7 @@ export function AccountSwitcher() {
   const [isSwitching, setIsSwitching] = useState(false);
   const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(null);
   const [showAllAccounts, setShowAllAccounts] = useState(false);
+  
 
   // تحميل الحسابات
   useEffect(() => {
@@ -119,7 +120,9 @@ export function AccountSwitcher() {
               >
                 <Loader2 size={28} className="text-blue-600" />
               </motion.div>
-              <h3 className="text-lg font-bold text-gray-900 mb-1">جاري تبديل الحساب</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">
+                جاري تبديل الحساب
+              </h3>
               <p className="text-sm text-gray-500">
                 {accounts.find((a) => a.id === switchingAccountId)?.name || ""}
               </p>
@@ -163,7 +166,7 @@ export function AccountSwitcher() {
                   <Building2 size={22} className="text-green-600" />
                 </div>
               )}
-              
+
               {/* شارة نشط */}
               <span className="absolute -top-1.5 -left-1.5 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
                 نشط
@@ -172,7 +175,9 @@ export function AccountSwitcher() {
 
             {/* المعلومات */}
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-gray-900 truncate">{activeAccount.name}</p>
+              <p className="font-bold text-gray-900 truncate">
+                {activeAccount.name}
+              </p>
               <p className="text-xs text-green-600 font-medium mt-0.5">
                 الحساب الحالي
               </p>
@@ -232,7 +237,10 @@ export function AccountSwitcher() {
 
                   {/* مؤشر التبديل */}
                   {isSwitching && switchingAccountId === account.id ? (
-                    <Loader2 size={18} className="animate-spin text-blue-500 flex-shrink-0" />
+                    <Loader2
+                      size={18}
+                      className="animate-spin text-blue-500 flex-shrink-0"
+                    />
                   ) : (
                     <span className="text-xs text-blue-600 font-medium flex-shrink-0">
                       تبديل
@@ -273,7 +281,9 @@ export function AccountSwitcher() {
             <PlusCircle size={20} className="text-blue-600" />
           </div>
           <div className="text-right">
-            <p className="text-sm font-semibold text-gray-800">إضافة حساب جديد</p>
+            <p className="text-sm font-semibold text-gray-800">
+              إضافة حساب جديد
+            </p>
             <p className="text-xs text-gray-500">تسجيل عيادة أو حساب آخر</p>
           </div>
         </button>
