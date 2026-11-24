@@ -1,16 +1,79 @@
 // public/sw.js
 
-const CACHE_NAME = "livedent-go-v5";
+const CACHE_NAME = "livedent-go-v8"; 
+
+// الصفحات الثابتة الأساسية (تُخزن دائماً)
 const STATIC_ASSETS = ["/", "/offline.html"];
 
+// قائمة التبويبات الأساسية للداشبورد
+const DASHBOARD_TABS = [
+  "?tab=main",
+  "?tab=patients",
+  "?tab=schedule",
+  "?tab=treatments",
+  "?tab=settings",
+  "?tab=clinic",
+  "?tab=cv",
+];
+
 self.addEventListener("install", (event) => {
+  console.log("[SW] Installing v8...");
+
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)),
+    caches.open(CACHE_NAME).then(async (cache) => {
+      // 1. تخزين الأساسيات
+      await cache
+        .addAll(STATIC_ASSETS)
+        .catch((err) =>
+          console.warn("[SW] Failed to precache static assets:", err),
+        );
+
+      // 2. 🧠 التخزين الذكي للداشبورد بناءً على localStorage
+      try {
+        const currentClinicId = localStorage.getItem("currentClinicId");
+
+        if (currentClinicId) {
+          const baseUrl = `/dashboard/${currentClinicId}`;
+          console.log(
+            `[SW] Precaching dashboard for clinic: ${currentClinicId}`,
+          );
+
+          // تخزين الصفحة الرئيسية للداشبورد + جميع التبويبات الأساسية
+          const urlsToPrecache = [
+            baseUrl,
+            ...DASHBOARD_TABS.map((tab) => `${baseUrl}${tab}`),
+          ];
+
+          // نستخدم Promise.allSettled لضمان عدم فشل التثبيت إذا فشل رابط واحد
+          const results = await Promise.allSettled(
+            urlsToPrecache.map((url) =>
+              fetch(url).then((res) => {
+                if (res.ok) return cache.put(url, res.clone());
+                throw new Error(`Failed to fetch ${url}`);
+              }),
+            ),
+          );
+
+          // تسجيل أي روابط فشلت للتشخيص فقط
+          results.forEach((result, index) => {
+            if (result.status === "rejected") {
+              console.warn(`[SW] Could not precache: ${urlsToPrecache[index]}`);
+            }
+          });
+        } else {
+          console.log("[SW] No clinic ID found, skipping dynamic precache.");
+        }
+      } catch (err) {
+        console.warn("[SW] Dynamic precache failed:", err);
+      }
+    }),
   );
+
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
+  console.log("[SW] Activating and cleaning old caches...");
   event.waitUntil(
     caches
       .keys()
@@ -26,36 +89,32 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const { request } = event;
 
-  // 🛡️ 1. تجاهل طلبات الإضافات والبروتوكولات غير المدعومة فوراً
+  // 🛡️ تجاهل الطلبات الخارجية والإضافات
   if (!request.url.startsWith(self.location.origin)) return;
-
-  // 2. تجاهل طلبات الكتابة
   if (request.method !== "GET") return;
 
   event.respondWith(
     caches.match(request).then(async (cachedResponse) => {
-      // إرجاع الكاش فوراً إذا وجد
+      // إرجاع الكاش فوراً (سواء كان مخزناً مسبقاً أو ديناميكياً)
       if (cachedResponse) return cachedResponse;
 
       try {
         const networkResponse = await fetch(request);
 
-        // ✅ 3. التخزين الآمن (نسخ الاستجابة قبل استخدامها)
+        // تخزين الاستجابات الناجحة ديناميكياً للاستخدام المستقبلي
         if (networkResponse && networkResponse.status === 200) {
           const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseToCache);
-          });
+          caches
+            .open(CACHE_NAME)
+            .then((cache) => cache.put(request, responseToCache));
         }
 
         return networkResponse;
       } catch (error) {
-        // 4. فشل الشبكة + لا يوجد كاش
+        // فشل الشبكة + لا يوجد كاش
         if (request.headers.get("accept")?.includes("text/html")) {
           return caches.match("/offline.html");
         }
-
-        // إرجاء استجابة صالحة بدلاً من undefined لمنع انهيار الـ SW
         return new Response("Offline", { status: 503 });
       }
     }),
