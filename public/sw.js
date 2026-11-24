@@ -1,7 +1,7 @@
 // public/sw.js
 
-const CACHE_NAME = "clinic-app-v1";
-const ASSETS_TO_CACHE = ["/", "/manifest.json", "/offline.html"];
+const CACHE_NAME = "livedent-go-v1";
+const ASSETS_TO_CACHE = ["/", "/offline.html"];
 
 // ✅ 1. التثبيت
 self.addEventListener("install", (event) => {
