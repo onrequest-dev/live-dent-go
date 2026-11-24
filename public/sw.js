@@ -1,6 +1,6 @@
 // public/sw.js
 
-const CACHE_NAME = "livedent-go-v4"; 
+const CACHE_NAME = "livedent-go-v5";
 const STATIC_ASSETS = ["/", "/offline.html"];
 
 self.addEventListener("install", (event) => {
@@ -26,25 +26,23 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const { request } = event;
 
-  // تجاهل طلبات الكتابة والطلبات الداخلية للمتصفح
+  // 🛡️ 1. تجاهل طلبات الإضافات والبروتوكولات غير المدعومة فوراً
+  if (!request.url.startsWith(self.location.origin)) return;
+
+  // 2. تجاهل طلبات الكتابة
   if (request.method !== "GET") return;
 
   event.respondWith(
     caches.match(request).then(async (cachedResponse) => {
-      // 1. إذا وجدنا نسخة مخزنة، نعرضها فوراً
-      if (cachedResponse) {
-        return cachedResponse;
-      }
+      // إرجاع الكاش فوراً إذا وجد
+      if (cachedResponse) return cachedResponse;
 
-      // 2. إذا لم توجد، نذهب للشبكة
       try {
         const networkResponse = await fetch(request);
 
-        // ✅ التأكد من أن الاستجابة ناجحة وقابلة للتخزين
+        // ✅ 3. التخزين الآمن (نسخ الاستجابة قبل استخدامها)
         if (networkResponse && networkResponse.status === 200) {
-          // ننسخ الاستجابة BEFORE إرجاعها للمتصفح
           const responseToCache = networkResponse.clone();
-
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(request, responseToCache);
           });
@@ -52,19 +50,13 @@ self.addEventListener("fetch", (event) => {
 
         return networkResponse;
       } catch (error) {
-        // 3. فشل الشبكة + لا يوجد كاش
-
-        // للصفحات HTML فقط نعرض صفحة الأوفلاين
+        // 4. فشل الشبكة + لا يوجد كاش
         if (request.headers.get("accept")?.includes("text/html")) {
           return caches.match("/offline.html");
         }
 
-        // للملفات الأخرى (JS, CSS, Images) نرجع خطأ واضح
-        // بدلاً من إرجاع undefined الذي يسبب خطأ Failed to convert
-        return new Response("Offline Resource", {
-          status: 503,
-          statusText: "Service Unavailable",
-        });
+        // إرجاء استجابة صالحة بدلاً من undefined لمنع انهيار الـ SW
+        return new Response("Offline", { status: 503 });
       }
     }),
   );
