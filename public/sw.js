@@ -1,9 +1,9 @@
 // public/sw.js
 
-const CACHE_NAME = "livedent-go-v8"; 
+const CACHE_NAME = "livedent-go-v9"; 
 
 // الصفحات الثابتة الأساسية (تُخزن دائماً)
-const STATIC_ASSETS = ["/", "/offline.html"];
+const STATIC_ASSETS = [ "/offline.html"];
 
 // قائمة التبويبات الأساسية للداشبورد
 const DASHBOARD_TABS = [
